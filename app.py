@@ -22,14 +22,16 @@ def get_data(tick, start, end):
     df = yf.download(tick, start=start, end=end, auto_adjust=True)
     if df.empty:
         raise ValueError(f"No data found for {tick} in this date range.")
-    return df['Close'].pct_change().dropna()
+    return df["Close"].pct_change().dropna()
 
 try:
     stock_ret = get_data(ticker, start, end)
     bench_ret = get_data(benchmark, start, end)
 
     # keep only overlapping trading days and drop any NaNs
-   df = pd.concat([stock_ret.rename("Stock"), bench_ret.rename("Benchmark")], axis=1).dropna()
+    df = pd.concat(
+        [stock_ret.rename("Stock"), bench_ret.rename("Benchmark")], axis=1
+    ).dropna()
 
     if df.empty:
         st.warning("No overlapping data in that date range. Try different dates.")
