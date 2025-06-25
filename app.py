@@ -29,11 +29,7 @@ try:
     bench_ret = get_data(benchmark, start, end)
 
     # keep only overlapping trading days and drop any NaNs
-    df = (
-        pd.concat([stock_ret, bench_ret], axis=1, join="inner")
-        .dropna()
-        .rename(columns={0: "Stock", 1: "Benchmark"})
-    )
+   df = pd.concat([stock_ret.rename("Stock"), bench_ret.rename("Benchmark")], axis=1).dropna()
 
     if df.empty:
         st.warning("No overlapping data in that date range. Try different dates.")
