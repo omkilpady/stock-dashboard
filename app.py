@@ -19,8 +19,10 @@ end         = st.date_input("End Date", default_end)
 # ----- Data pull -----------------------------------------------------------
 @st.cache_data
 def get_data(tick, start, end):
-    prices = yf.download(tick, start=start, end=end)["Adj Close"]
-    return prices.pct_change().dropna()
+    df = yf.download(tick, start=start, end=end, auto_adjust=True)
+    if df.empty:
+        raise ValueError(f"No data found for {tick} in this date range.")
+    return df['Close'].pct_change().dropna()
 
 try:
     stock_ret = get_data(ticker, start, end)
@@ -59,4 +61,4 @@ try:
 
 except Exception as e:
     st.warning("Please enter valid tickers and make sure data exists for the selected range.")
-    st.text(f"Debug: {e}")
+    st.exception(e)
