@@ -7,37 +7,38 @@ import datetime as dt
 
 st.title("📊 Stock Beta & Volatility Analyzer")
 
-# ----- Inputs --------------------------------------------------------------
-ticker     = st.text_input("Enter Stock Ticker", "AAPL")
-benchmark  = st.text_input("Enter Benchmark (e.g. ^GSPC)", "^GSPC")
+# ── Inputs ──────────────────────────────────────────────────────────────────
+ticker    = st.text_input("Enter Stock Ticker", "AAPL")
+benchmark = st.text_input("Enter Benchmark (e.g. ^GSPC)", "^GSPC")
 
 today       = dt.date.today()
-default_end = today - dt.timedelta(days=1)          # yesterday to ensure data exists
+default_end = today - dt.timedelta(days=1)          # yesterday so data exists
 start       = st.date_input("Start Date", dt.date(2023, 1, 1))
 end         = st.date_input("End Date", default_end)
 
-# ----- Data pull -----------------------------------------------------------
+# ── Helper: fetch daily % returns ───────────────────────────────────────────
 @st.cache_data
-def get_data(tick, start, end):
-    df = yf.download(tick, start=start, end=end, auto_adjust=True)
-    if df.empty:
-        raise ValueError(f"No data found for {tick} in this date range.")
-    return df['Close'].pct_change().dropna()
+def fetch_returns(tick, start, end):
+    px = yf.download(tick, start=start, end=end, auto_adjust=True)["Close"]
+    return px.pct_change().dropna()
 
 try:
-    stock_ret = get_data(ticker, start, end)
-    bench_ret = get_data(benchmark, start, end)
+    stock_ret = fetch_returns(ticker,    start, end)
+    bench_ret = fetch_returns(benchmark, start, end)
 
-    # Fix: Properly name the Series before combining
-    stock_ret.name = "Stock"
-    bench_ret.name = "Benchmark"
-    df = pd.concat([stock_ret, bench_ret], axis=1).dropna()
-
-    if df.empty:
-        st.warning("No overlapping data in that date range. Try different dates.")
+    if stock_ret.empty or bench_ret.empty:
+        st.warning("No price data for one or both tickers in that date range.")
         st.stop()
 
-    # ----- Stats -----------------------------------------------------------
+    # Combine and enforce column names explicitly
+    df = pd.concat([stock_ret, bench_ret], axis=1).dropna()
+    df.columns = ["Stock", "Benchmark"]  # <-- bullet-proof rename
+
+    if df.empty:
+        st.warning("No overlapping trading days—try a different date range.")
+        st.stop()
+
+    # ── Stats ───────────────────────────────────────────────────────────────
     beta  = np.cov(df["Stock"], df["Benchmark"])[0, 1] / np.var(df["Benchmark"])
     alpha = df["Stock"].mean() - beta * df["Benchmark"].mean()
     r2    = np.corrcoef(df["Stock"], df["Benchmark"])[0, 1] ** 2
@@ -48,20 +49,17 @@ try:
     st.write(f"**R²**: {r2:.2f}")
     st.write(f"**Standard Deviation (σ)**: {sigma:.2%}")
 
-    # ----- Chart -----------------------------------------------------------
+    # ── Chart ───────────────────────────────────────────────────────────────
     fig, ax = plt.subplots()
     ax.scatter(df["Benchmark"], df["Stock"], alpha=0.5)
-    ax.plot(df["Benchmark"], alpha + beta * df["Benchmark"], color="red")
-    ax.set_xlabel("Benchmark Return")
-    ax.set_ylabel("Stock Return")
+    ax.plot(df["Benchmark"],
+            alpha + beta * df["Benchmark"],
+            color="red")
+    ax.set_xlabel(f"{benchmark} Return")
+    ax.set_ylabel(f"{ticker} Return")
     ax.set_title("Regression Line (Beta)")
     st.pyplot(fig)
 
 except Exception as e:
-    st.warning("Please enter valid tickers and make sure data exists for the selected range.")
+    st.warning("Something went wrong. Double-check tickers and date range.")
     st.exception(e)
-
-except Exception as e:
-    st.warning("Please enter valid tickers and make sure data exists for the selected range.")
-    st.exception(e)
-
