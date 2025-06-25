@@ -64,10 +64,8 @@ try:
     st.pyplot(fig)
 
 except Exception as e:
-    st.warning("Something went wrong. Double-check tickers and date range.")
-    st.exception(e)
-
-except Exception as e:
-    st.warning("Please enter valid tickers and make sure data exists for the selected range.")
+    st.warning(
+        "Please enter valid tickers and make sure data exists for the selected range."
+    )
     st.exception(e)
 
