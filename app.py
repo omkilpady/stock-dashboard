@@ -30,8 +30,9 @@ try:
 
     # keep only overlapping trading days and drop any NaNs
     df = pd.concat(
-        [stock_ret.rename("Stock"), bench_ret.rename("Benchmark")], axis=1
-    ).dropna()
+        stock_ret.name = "Stock"
+bench_ret.name = "Benchmark"
+df = pd.concat([stock_ret, bench_ret], axis=1).dropna(),
 
     if df.empty:
         st.warning("No overlapping data in that date range. Try different dates.")
