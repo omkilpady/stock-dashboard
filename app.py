@@ -12,7 +12,7 @@ ticker     = st.text_input("Enter Stock Ticker", "AAPL")
 benchmark  = st.text_input("Enter Benchmark (e.g. ^GSPC)", "^GSPC")
 
 today       = dt.date.today()
-default_end = today - dt.timedelta(days=1)          # yesterday to ensure data exists
+default_end = today - dt.timedelta(days=1)  # yesterday to ensure data exists
 start       = st.date_input("Start Date", dt.date(2023, 1, 1))
 end         = st.date_input("End Date", default_end)
 
@@ -22,17 +22,16 @@ def get_data(tick, start, end):
     df = yf.download(tick, start=start, end=end, auto_adjust=True)
     if df.empty:
         raise ValueError(f"No data found for {tick} in this date range.")
-    return df["Close"].pct_change().dropna()
+    return df['Close'].pct_change().dropna()
 
 try:
     stock_ret = get_data(ticker, start, end)
     bench_ret = get_data(benchmark, start, end)
 
-    # keep only overlapping trading days and drop any NaNs
-    df = pd.concat(
-        stock_ret.name = "Stock"
-bench_ret.name = "Benchmark"
-df = pd.concat([stock_ret, bench_ret], axis=1).dropna(),
+    # Rename series to merge into DataFrame
+    stock_ret.name = "Stock"
+    bench_ret.name = "Benchmark"
+    df = pd.concat([stock_ret, bench_ret], axis=1).dropna()
 
     if df.empty:
         st.warning("No overlapping data in that date range. Try different dates.")
@@ -61,3 +60,4 @@ df = pd.concat([stock_ret, bench_ret], axis=1).dropna(),
 except Exception as e:
     st.warning("Please enter valid tickers and make sure data exists for the selected range.")
     st.exception(e)
+
