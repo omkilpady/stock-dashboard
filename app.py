@@ -8,13 +8,13 @@ import datetime as dt
 st.title("📊 Stock Beta & Volatility Analyzer")
 
 # ----- Inputs --------------------------------------------------------------
-ticker = st.text_input("Enter Stock Ticker", "AAPL")
-benchmark = st.text_input("Enter Benchmark (e.g. ^GSPC)", "^GSPC")
+ticker     = st.text_input("Enter Stock Ticker", "AAPL")
+benchmark  = st.text_input("Enter Benchmark (e.g. ^GSPC)", "^GSPC")
 
-today = dt.date.today()
-default_end = today - dt.timedelta(days=1)
-start = st.date_input("Start Date", dt.date(2023, 1, 1))
-end = st.date_input("End Date", default_end)
+today       = dt.date.today()
+default_end = today - dt.timedelta(days=1)          # yesterday to ensure data exists
+start       = st.date_input("Start Date", dt.date(2023, 1, 1))
+end         = st.date_input("End Date", default_end)
 
 # ----- Data pull -----------------------------------------------------------
 @st.cache_data
@@ -22,23 +22,25 @@ def get_data(tick, start, end):
     df = yf.download(tick, start=start, end=end, auto_adjust=True)
     if df.empty:
         raise ValueError(f"No data found for {tick} in this date range.")
-    return df["Close"].pct_change().dropna()
+    return df['Close'].pct_change().dropna()
 
 try:
     stock_ret = get_data(ticker, start, end)
     bench_ret = get_data(benchmark, start, end)
 
-    # Combine data with proper column labels
-    df = pd.concat([stock_ret.rename("Stock"), bench_ret.rename("Benchmark")], axis=1).dropna()
+    # Fix: Properly name the Series before combining
+    stock_ret.name = "Stock"
+    bench_ret.name = "Benchmark"
+    df = pd.concat([stock_ret, bench_ret], axis=1).dropna()
 
     if df.empty:
         st.warning("No overlapping data in that date range. Try different dates.")
         st.stop()
 
     # ----- Stats -----------------------------------------------------------
-    beta = np.cov(df["Stock"], df["Benchmark"])[0, 1] / np.var(df["Benchmark"])
+    beta  = np.cov(df["Stock"], df["Benchmark"])[0, 1] / np.var(df["Benchmark"])
     alpha = df["Stock"].mean() - beta * df["Benchmark"].mean()
-    r2 = np.corrcoef(df["Stock"], df["Benchmark"])[0, 1] ** 2
+    r2    = np.corrcoef(df["Stock"], df["Benchmark"])[0, 1] ** 2
     sigma = df["Stock"].std()
 
     st.write(f"**Beta**: {beta:.2f}")
