@@ -36,18 +36,20 @@ try:
     px_stock = fetch_px(ticker, start, end)
     px_bench = fetch_px(benchmark, start, end)
 
+    # Align prices and name columns
     prices = pd.concat([px_stock, px_bench], axis=1, join="inner").dropna()
-prices.columns = ["Stock_Price", "Benchmark_Price"]
+    prices.columns = ["Stock_Price", "Benchmark_Price"]
+    prices.index.name = "Date"
 
-prices.index.name  = "Date"
-returns = prices.pct_change().dropna().rename(
-    columns={"Stock_Price": "Stock", "Benchmark_Price": "Benchmark"}
-)
-returns.index.name = "Date"
+    # Daily returns
+    returns = prices.pct_change().dropna().rename(
+        columns={"Stock_Price": "Stock", "Benchmark_Price": "Benchmark"}
+    )
+    returns.index.name = "Date"
 
-if returns.empty:
-    st.warning("No overlapping trading days. Adjust the date range.")
-    st.stop()
+    if returns.empty:
+        st.warning("No overlapping trading days. Adjust the date range.")
+        st.stop()
 
     # ── Stats ──────────────────────────────────────────────────────────────
     cov = np.cov(returns["Stock"], returns["Benchmark"])[0, 1]
@@ -60,7 +62,7 @@ if returns.empty:
     mean_ret = returns["Stock"].mean()
     sharpe = (mean_ret / sigma) * np.sqrt(252)
 
-    # ── Metric cards + noob-friendly explainers ────────────────────────────
+    # ── Metric cards + tooltips ────────────────────────────────────────────
     metrics = {
         "Beta": (
             f"{beta:.2f}",
@@ -98,9 +100,7 @@ if returns.empty:
     rows = [st.columns(4), st.columns(3)]
     for idx, (label, (val, expl)) in enumerate(metrics.items()):
         col = rows[0][idx] if idx < 4 else rows[1][idx - 4]
-        col.metric(label, val)
-        if col.button("🛈", key=f"exp_{label}"):
-            col.info(expl)
+        col.metric(label, val, help=expl)
 
     # ── Optional Charts ────────────────────────────────────────────────────
     st.subheader("📈 Optional Charts")
@@ -132,7 +132,11 @@ if returns.empty:
                 x="Date:T",
                 y=alt.Y("CumReturn:Q", title="Cumulative Return"),
                 color="variable:N",
-                tooltip=["Date:T", "variable:N", alt.Tooltip("CumReturn:Q", format=".2%")],
+                tooltip=[
+                    "Date:T",
+                    "variable:N",
+                    alt.Tooltip("CumReturn:Q", format=".2%"),
+                ],
             )
             .interactive()
         )
@@ -140,7 +144,6 @@ if returns.empty:
 
     # ── Download button ────────────────────────────────────────────────────
     full_df = prices.join(returns, how="inner")
-    full_df.index.name = "Date"
     st.download_button(
         "Download prices + returns CSV",
         data=full_df.to_csv().encode(),
