@@ -37,16 +37,17 @@ try:
     px_bench = fetch_px(benchmark, start, end)
 
     prices = pd.concat([px_stock, px_bench], axis=1, join="inner").dropna()
-    prices.columns = ["Stock_Price", "Benchmark_Price"]
-    prices.index.name  = "Date"
+prices.columns = ["Stock_Price", "Benchmark_Price"]
 
-    returns = prices.pct_change().dropna().rename(
-        columns={"Stock_Price": "Stock", "Benchmark_Price": "Benchmark"}
-    )
+prices.index.name  = "Date"
+returns = prices.pct_change().dropna().rename(
+    columns={"Stock_Price": "Stock", "Benchmark_Price": "Benchmark"}
+)
 returns.index.name = "Date"
-    if returns.empty:
-        st.warning("No overlapping trading days. Adjust the date range.")
-        st.stop()
+
+if returns.empty:
+    st.warning("No overlapping trading days. Adjust the date range.")
+    st.stop()
 
     # ── Stats ──────────────────────────────────────────────────────────────
     cov = np.cov(returns["Stock"], returns["Benchmark"])[0, 1]
