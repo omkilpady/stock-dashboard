@@ -145,3 +145,23 @@ try:
 
 except Exception as e:
     st.error(f"Error: {e}")
+# ── Optional charts section ───────────────────────────────────────────────
+st.subheader("📈 Optional Charts")
+
+show_price = st.checkbox("Show price history")
+show_ret   = st.checkbox("Show cumulative return")
+
+if show_price:
+    price_df = prices.reset_index().melt(id_vars="Date", value_name="Price")
+    price_chart = (
+        alt.Chart(price_df)
+        .mark_line()
+        .encode(
+            x="Date:T",
+            y=alt.Y("Price:Q", title="Adjusted Close Price"),
+            color="variable:N",
+            tooltip=["Date:T", "variable:N", "Price:Q"]
+        )
+        .interactive()
+    )
+    st.altair_chart(price_chart, use_container_width=True)
