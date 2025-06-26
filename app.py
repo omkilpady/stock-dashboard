@@ -94,12 +94,47 @@ try:
 
     st.subheader("Key Metrics")
     rows = [st.columns(4), st.columns(3)]
-    keys = list(metrics.keys())
     for idx, (label, (val, expl)) in enumerate(metrics.items()):
         col = rows[0][idx] if idx < 4 else rows[1][idx - 4]
         col.metric(label, val)
         if col.button("🛈", key=f"exp_{label}"):
             col.info(expl)
+
+    # ── Optional Charts ────────────────────────────────────────────────────
+    st.subheader("📈 Optional Charts")
+    show_price = st.checkbox("Show price history")
+    show_ret   = st.checkbox("Show cumulative return")
+
+    if show_price:
+        price_df = prices.reset_index().melt(id_vars="Date", value_name="Price")
+        price_chart = (
+            alt.Chart(price_df)
+            .mark_line()
+            .encode(
+                x="Date:T",
+                y=alt.Y("Price:Q", title="Adjusted Close Price"),
+                color="variable:N",
+                tooltip=["Date:T", "variable:N", "Price:Q"],
+            )
+            .interactive()
+        )
+        st.altair_chart(price_chart, use_container_width=True)
+
+    if show_ret:
+        cum_ret = (returns + 1).cumprod() - 1
+        cum_df = cum_ret.reset_index().melt(id_vars="Date", value_name="CumReturn")
+        ret_chart = (
+            alt.Chart(cum_df)
+            .mark_line()
+            .encode(
+                x="Date:T",
+                y=alt.Y("CumReturn:Q", title="Cumulative Return"),
+                color="variable:N",
+                tooltip=["Date:T", "variable:N", alt.Tooltip("CumReturn:Q", format=".2%")],
+            )
+            .interactive()
+        )
+        st.altair_chart(ret_chart, use_container_width=True)
 
     # ── Download button ────────────────────────────────────────────────────
     full_df = prices.join(returns, how="inner")
@@ -111,7 +146,7 @@ try:
         mime="text/csv",
     )
 
-    # ── Interactive scatter + regression line ──────────────────────────────
+    # ── Scatter + regression line ──────────────────────────────────────────
     scatter = (
         alt.Chart(returns.reset_index())
         .mark_circle(size=60, opacity=0.5)
@@ -145,23 +180,3 @@ try:
 
 except Exception as e:
     st.error(f"Error: {e}")
-# ── Optional charts section ───────────────────────────────────────────────
-st.subheader("📈 Optional Charts")
-
-show_price = st.checkbox("Show price history")
-show_ret   = st.checkbox("Show cumulative return")
-
-if show_price:
-    price_df = prices.reset_index().melt(id_vars="Date", value_name="Price")
-    price_chart = (
-        alt.Chart(price_df)
-        .mark_line()
-        .encode(
-            x="Date:T",
-            y=alt.Y("Price:Q", title="Adjusted Close Price"),
-            color="variable:N",
-            tooltip=["Date:T", "variable:N", "Price:Q"]
-        )
-        .interactive()
-    )
-    st.altair_chart(price_chart, use_container_width=True)
