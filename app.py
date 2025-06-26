@@ -98,7 +98,7 @@ try:
     for idx, (label, (val, expl)) in enumerate(metrics.items()):
         col = rows[0][idx] if idx < 4 else rows[1][idx - 4]
         col.metric(label, val)
-        if col.button("i", key=f"exp_{label}"):
+        if col.button("🛈", key=f"exp_{label}"):
             col.info(expl)
 
     # ── Download button ────────────────────────────────────────────────────
