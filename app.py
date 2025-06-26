@@ -44,7 +44,7 @@ try:
     )
 
     if returns.empty:
-        st.warning("No overlapping trading days—adjust date range.")
+        st.warning("No overlapping trading days. Adjust the date range.")
         st.stop()
 
     # ── Stats ──────────────────────────────────────────────────────────────
@@ -58,15 +58,38 @@ try:
     mean_ret = returns["Stock"].mean()
     sharpe = (mean_ret / sigma) * np.sqrt(252)
 
-    # ── Metric cards + explainer buttons ───────────────────────────────────
+    # ── Metric cards + noob-friendly explainers ────────────────────────────
     metrics = {
-        "Beta": (f"{beta:.2f}", f"{ticker} moves ~{beta:.2f}× the benchmark each day."),
-        "Alpha": (f"{alpha:.3%}", f"When {benchmark} is flat, {ticker} averages {alpha:.3%}."),
-        "R²": (f"{r2:.2f}", f"{r2:.0%} of {ticker}'s moves are explained by {benchmark}."),
-        "σ": (f"{sigma:.2%}", f"Typical daily move (volatility) for {ticker}."),
-        "ρ": (f"{corr:.2f}", f"Pearson correlation between the two return series."),
-        "Mean": (f"{mean_ret:.3%}", f"Average daily return for {ticker}."),
-        "Sharpe": (f"{sharpe:.2f}", f"Risk-adjusted return (annualized)."),
+        "Beta": (
+            f"{beta:.2f}",
+            f"A beta of {beta:.2f} means **{ticker}** tends to move "
+            f"{abs(beta):.2f}× the benchmark each day "
+            f"{'in the same direction' if beta >= 0 else 'in the opposite direction'}.",
+        ),
+        "Alpha": (
+            f"{alpha:.3%}",
+            f"When **{benchmark}** is flat, **{ticker}** averages {alpha:.3%} extra return.",
+        ),
+        "R²": (
+            f"{r2:.2f}",
+            f"{r2:.0%} of **{ticker}**’s daily moves are explained by **{benchmark}**.",
+        ),
+        "σ": (
+            f"{sigma:.2%}",
+            f"Typical one-day move (volatility) for **{ticker}** is ±{sigma:.2%}.",
+        ),
+        "ρ": (
+            f"{corr:.2f}",
+            "Correlation ranges −1 to +1; closer to +1 means they often move together.",
+        ),
+        "Mean": (
+            f"{mean_ret:.3%}",
+            f"Average daily return for **{ticker}** over the selected period.",
+        ),
+        "Sharpe": (
+            f"{sharpe:.2f}",
+            "Risk-adjusted return (annualized). Above 1 is generally considered good.",
+        ),
     }
 
     st.subheader("Key Metrics")
@@ -75,7 +98,7 @@ try:
     for idx, (label, (val, expl)) in enumerate(metrics.items()):
         col = rows[0][idx] if idx < 4 else rows[1][idx - 4]
         col.metric(label, val)
-        if col.button("ℹ️ Explain", key=f"exp_{label}"):
+        if col.button("What does this mean?", key=f"exp_{label}"):
             col.info(expl)
 
     # ── Download button ────────────────────────────────────────────────────
@@ -108,10 +131,16 @@ try:
 
     st.altair_chart((scatter + reg_line).interactive(), use_container_width=True)
 
-    # ── Chart explainer ────────────────────────────────────────────────────
-    st.caption(
-        "Each dot is a trading day’s paired returns. "
-        "The red line is the best-fit regression; its slope is Beta."
+    # ── Friendly chart caption ─────────────────────────────────────────────
+    st.markdown(
+        f"""
+**Chart guide**
+
+* **Dots** – each trading day’s paired returns for **{ticker}** and **{benchmark}** from **{start}** to **{end}**.  
+* **Red line** – “best-fit” trend; its slope is the Beta above.  
+* Steeper line ⇒ higher sensitivity; flat or downward line ⇒ little or opposite sensitivity.
+""",
+        unsafe_allow_html=True,
     )
 
 except Exception as e:
