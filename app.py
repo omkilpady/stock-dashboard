@@ -5,64 +5,78 @@ import numpy as np
 import matplotlib.pyplot as plt
 import datetime as dt
 
-st.title("Stock Beta & Volatility Analyzer")
+st.title("📊 Stock Beta & Volatility Analyzer")
 
 # ── Inputs ─────────────────────────────────────────────────────────────────
 ticker    = st.text_input("Enter Stock Ticker", "AAPL")
 benchmark = st.text_input("Enter Benchmark (e.g. ^GSPC)", "^GSPC")
 
 today       = dt.date.today()
-default_end = today - dt.timedelta(days=1)          # yesterday so data exists
+default_end = today - dt.timedelta(days=1)
 start       = st.date_input("Start Date", dt.date(2023, 1, 1))
 end         = st.date_input("End Date", default_end)
 
-# ── Helper: fetch daily % returns ──────────────────────────────────────────
+# ── Helper: fetch adjusted-close prices ────────────────────────────────────
 @st.cache_data
-def fetch_returns(tick, start, end):
+def fetch_prices(tick, start, end):
     px = yf.download(tick, start=start, end=end, auto_adjust=True)["Close"]
-    return px.pct_change().dropna()
+    px.index = px.index.date  # drop intraday time part
+    return px
 
 try:
-    stock_ret = fetch_returns(ticker,    start, end)
-    bench_ret = fetch_returns(benchmark, start, end)
+    stock_px  = fetch_prices(ticker,    start, end)
+    bench_px  = fetch_prices(benchmark, start, end)
 
-    if stock_ret.empty or bench_ret.empty:
-        st.warning("No price data for one or both tickers in that date range.")
+    # Align dates (inner join) and drop blanks
+    prices = pd.concat([stock_px, bench_px], axis=1, join="inner").dropna()
+    prices.columns = ["Stock_Price", "Benchmark_Price"]
+
+    if prices.empty:
+        st.warning("No overlapping price data—try a different date range.")
         st.stop()
 
-    # Combine and enforce column names
-    df = pd.concat([stock_ret, bench_ret], axis=1).dropna()
-    df.columns = ["Stock", "Benchmark"]
+    # Compute returns
+    returns = prices.pct_change().dropna()
+    returns.columns = ["Stock", "Benchmark"]
 
-    if df.empty:
-        st.warning("No overlapping trading days—try a different date range.")
-        st.stop()
+    # Combined DataFrame (for download)
+    df_full = prices.join(returns, how="inner")
+    df_full.index.name = "Date"
 
     # ── Stats ──────────────────────────────────────────────────────────────
-    beta  = np.cov(df["Stock"], df["Benchmark"])[0, 1] / np.var(df["Benchmark"])
-    alpha = df["Stock"].mean() - beta * df["Benchmark"].mean()
-    r2    = np.corrcoef(df["Stock"], df["Benchmark"])[0, 1] ** 2
-    sigma = df["Stock"].std()
+    beta  = np.cov(returns["Stock"], returns["Benchmark"])[0, 1] / np.var(returns["Benchmark"])
+    alpha = returns["Stock"].mean() - beta * returns["Benchmark"].mean()
+    r2    = np.corrcoef(returns["Stock"], returns["Benchmark"])[0, 1] ** 2
+    sigma = returns["Stock"].std()
 
-    # Display metrics
     cols = st.columns(4)
     cols[0].metric("Beta", f"{beta:.2f}")
     cols[1].metric("Alpha", f"{alpha:.4%}")
     cols[2].metric("R²", f"{r2:.2f}")
     cols[3].metric("σ (Std Dev)", f"{sigma:.2%}")
 
-    # ── Download button ────────────────────────────────────────────────────
+    # ── Download buttons ──────────────────────────────────────────────────
     st.download_button(
-        "Download returns CSV",
-        data=df.to_csv(index=True).encode("utf-8"),
+        "Download prices + returns CSV",
+        data=df_full.to_csv().encode("utf-8"),
+        file_name="prices_and_returns.csv",
+        mime="text/csv",
+    )
+    st.download_button(
+        "Download returns-only CSV",
+        data=returns.to_csv().encode("utf-8"),
         file_name="returns.csv",
         mime="text/csv",
     )
 
-    # ── Scatter plot with regression line ─────────────────────────────────
+    # ── Scatter plot ──────────────────────────────────────────────────────
     fig, ax = plt.subplots()
-    ax.scatter(df["Benchmark"], df["Stock"], alpha=0.5)
-    ax.plot(df["Benchmark"], alpha + beta * df["Benchmark"], color="red")
+    ax.scatter(returns["Benchmark"], returns["Stock"], alpha=0.5)
+    ax.plot(
+        returns["Benchmark"],
+        alpha + beta * returns["Benchmark"],
+        color="red"
+    )
     ax.set_xlabel(f"{benchmark} Return")
     ax.set_ylabel(f"{ticker} Return")
     ax.set_title("Regression Line (Beta)")
@@ -71,4 +85,5 @@ try:
 except Exception as e:
     st.warning("Something went wrong. Double-check tickers and date range.")
     st.exception(e)
+
 
