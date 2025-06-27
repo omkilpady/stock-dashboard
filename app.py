@@ -183,5 +183,65 @@ try:
         unsafe_allow_html=True,
     )
 
+    # ── Portfolio Tracker ─────────────────────────────────────────────────
+    st.subheader("📒 Portfolio Tracker")
+
+    if "portfolio" not in st.session_state:
+        st.session_state["portfolio"] = []
+
+    with st.form("add_asset"):
+        a_cols = st.columns(4)
+        sym = a_cols[0].text_input("Symbol")
+        date_bought = a_cols[1].date_input("Buy Date", today)
+        shares = a_cols[2].number_input("Shares", min_value=0.0, step=0.01)
+        total_val = a_cols[3].number_input(
+            "Total Value ($)",
+            min_value=0.0,
+            step=0.01,
+        )
+        submitted = st.form_submit_button("Add")
+
+        if submitted and sym:
+            st.session_state["portfolio"].append(
+                {
+                    "symbol": sym.upper(),
+                    "date": date_bought,
+                    "shares": shares,
+                    "value": total_val,
+                }
+            )
+
+    if st.session_state["portfolio"]:
+        pf_df = pd.DataFrame(st.session_state["portfolio"])
+
+        try:
+            latest = (
+                yf.download(
+                    list(pf_df["symbol"].unique()),
+                    period="1d",
+                    auto_adjust=True,
+                )["Close"].iloc[-1]
+            )
+        except Exception:
+            latest = pd.Series(dtype=float)
+
+        pf_df["Current"] = pf_df["symbol"].map(latest)
+
+        def compute_cost(row: pd.Series) -> float:
+            if row["value"] > 0:
+                return row["value"]
+            if row["shares"] > 0 and not pd.isna(row["Current"]):
+                return row["shares"] * row["Current"]
+            return np.nan
+
+        pf_df["Invested"] = pf_df.apply(compute_cost, axis=1)
+        pf_df["Current Value"] = pf_df["shares"] * pf_df["Current"]
+        pf_df["P/L"] = pf_df["Current Value"] - pf_df["Invested"]
+
+        st.dataframe(
+            pf_df[["symbol", "date", "shares", "value", "Current", "Current Value", "P/L"]],
+            use_container_width=True,
+        )
+
 except Exception as e:
     st.error(f"Error: {e}")
