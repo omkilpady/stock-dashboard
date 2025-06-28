@@ -1,21 +1,3 @@
- (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
-diff --git a/README.md b/README.md
-index 0d5e9c13a69fb1f67f4cc0f45940ad1a29e7bb04..6cd782bfa011d71d3b8eacc2c062d5c4f650f283 100644
---- a/README.md
-+++ b/README.md
-@@ -1 +1,5 @@
--# stock-dashboard
-\ No newline at end of file
-+# Stock Dashboard
-+
-+This Streamlit app analyzes a stock's beta and volatility versus a benchmark. It also contains a **Portfolio Tracker** for monitoring an entire portfolio.
-+
-+The tracker verifies each ticker and automatically fetches the price on the purchase date. Enter the number of shares and choose whether to track the holding in its native currency or convert values to USD. Holdings can be edited or removed and a chart displays the portfolio’s value over time.
-diff --git a/app.py b/app.py
-index 3e5bc803a775fc24a5c7f010ddcd7ad2d8990036..5ce0dabd1bebf693539060997efb0c0c9e216b05 100644
---- a/app.py
-+++ b/app.py
-@@ -1,31 +1,32 @@
  import streamlit as st
  import yfinance as yf
  import pandas as pd
