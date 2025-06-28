@@ -30,7 +30,6 @@
  @st.cache_data
  def fetch_px(tick, start, end):
      px = yf.download(tick, start=start, end=end, auto_adjust=True)["Close"]
-@@ -161,27 +162,213 @@ try:
              tooltip=["Date:T", "Stock", "Benchmark"],
          )
      )
