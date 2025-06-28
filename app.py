@@ -169,8 +169,8 @@ try:
         f"""
 **Chart guide**
 
-* **Dots** – each trading day’s paired returns for **{ticker}** and **{benchmark}** from **{start}** to **{end}**.  
-* **Red line** – “best-fit” trend; its slope is the Beta above.  
+* **Dots** – each trading day’s paired returns for **{ticker}** and **{benchmark}** from **{start}** to **{end}**.
+* **Red line** – “best-fit” trend; its slope is the Beta above.
 * Steeper line ⇒ higher sensitivity; flat or downward line ⇒ little or opposite sensitivity.
 """,
         unsafe_allow_html=True,
