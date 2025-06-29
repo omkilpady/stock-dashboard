@@ -29,8 +29,11 @@ class FakeData(dict):
         super().__init__()
         self["Close"] = FakeSeries(values)
 
-def load_helpers(fake_download):
+def load_helpers(fake_download, fake_get=None):
     sys.modules['yfinance'] = types.SimpleNamespace(download=fake_download)
+    if fake_get is None:
+        fake_get = lambda *a, **k: None
+    sys.modules['requests'] = types.SimpleNamespace(get=fake_get)
     if 'helpers' in sys.modules:
         del sys.modules['helpers']
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -53,3 +56,19 @@ def test_price_on_date_no_data():
     helpers = load_helpers(lambda *a, **k: FakeData([]))
     result = helpers.price_on_date('AAPL', dt.date(2023, 1, 1))
     assert math.isnan(result)
+
+
+def test_search_tickers():
+    def fake_get(url, timeout=3):
+        class FakeResponse:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"quotes": [{"symbol": "AAPL"}, {"symbol": "AA"}]}
+
+        return FakeResponse()
+
+    helpers = load_helpers(lambda *a, **k: FakeData([]), fake_get=fake_get)
+    result = helpers.search_tickers("AA")
+    assert result == ["AAPL", "AA"]
