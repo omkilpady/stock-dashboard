@@ -1,9 +1,9 @@
-streamlit
-yfinance
-pandas
+altair
+matplotlib
 numpy
+pandas
+requests
 scipy
 statsmodels
-matplotlib
-altair
-requests
+streamlit
+yfinance
