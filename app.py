@@ -6,6 +6,7 @@ import altair as alt
 import datetime as dt
 from typing import List, Dict
 
+from helpers import fx_to_usd, price_on_date
 st.set_page_config(page_title="Stock Beta & Vol Analyzer", layout="centered")
 
 # ── Title ──────────────────────────────────────────────────────────────────
@@ -16,10 +17,12 @@ st.markdown(
 
 # ── Inputs ─────────────────────────────────────────────────────────────────
 c1, c2 = st.columns(2)
+COMMON_TICKERS = ["AAPL", "MSFT", "GOOG", "AMZN", "META", "NVDA", "TSLA"]
+BENCHMARKS = ["^GSPC", "SPY", "QQQ", "DIA", "^IXIC"]
 with c1:
-    ticker = st.text_input("Stock Ticker", "AAPL")
+    ticker = st.selectbox("Stock Ticker", COMMON_TICKERS, index=0)
 with c2:
-    benchmark = st.text_input("Benchmark (e.g. ^GSPC)", "^GSPC")
+    benchmark = st.selectbox("Benchmark", BENCHMARKS, index=0)
 
 today = dt.date.today()
 default_end = today - dt.timedelta(days=1)
@@ -193,35 +196,10 @@ try:
             pass
         return None
 
-    def fx_to_usd(value: float, currency: str) -> float:
-        """Convert value to USD if a FX rate is available."""
-        if currency == "USD":
-            return value
-        try:
-            pair = f"{currency}USD=X"
-            rate = yf.download(pair, period="1d", auto_adjust=True)["Close"].iloc[-1]
-            return value * rate
-        except Exception:
-            return value
-
-    def price_on_date(symbol: str, date: dt.date) -> float:
-        """Get the first available closing price on or after the date."""
-        try:
-            data = yf.download(
-                symbol,
-                start=date,
-                end=date + dt.timedelta(days=5),
-                auto_adjust=True,
-            )["Close"]
-            if not data.empty:
-                return data.iloc[0]
-        except Exception:
-            pass
-        return float("nan")
 
     with st.form("add_asset"):
         a_cols = st.columns(4)
-        sym = a_cols[0].text_input("Symbol")
+        sym = a_cols[0].selectbox("Symbol", COMMON_TICKERS, index=0)
         date_bought = a_cols[1].date_input("Buy Date", today)
         shares = a_cols[2].number_input("Shares", min_value=0.0, step=0.01)
         track_usd = a_cols[3].checkbox("Track in USD", value=True)
@@ -256,13 +234,16 @@ try:
         pf_df = pd.DataFrame(st.session_state["portfolio"])
 
         try:
-            latest = (
-                yf.download(
-                    list(pf_df["symbol"].unique()),
-                    period="1d",
-                    auto_adjust=True,
-                )["Close"].iloc[-1]
-            )
+            data = yf.download(
+                list(pf_df["symbol"].unique()),
+                period="1d",
+                auto_adjust=True,
+            )["Close"]
+            last_row = data.iloc[-1]
+            if isinstance(last_row, pd.Series):
+                latest = last_row
+            else:
+                latest = pd.Series({pf_df["symbol"].unique()[0]: last_row})
         except Exception:
             latest = pd.Series(dtype=float)
 
@@ -284,19 +265,21 @@ try:
         )
 
         for i in pf_df.index:
-            e_col, d_col = st.columns(2)
+            e_col, d_col, s_col = st.columns(3)
             if e_col.button("Edit", key=f"edit_{i}"):
                 st.session_state["edit_idx"] = int(i)
             if d_col.button("Delete", key=f"del_{i}"):
                 st.session_state["portfolio"].pop(int(i))
                 st.experimental_rerun()
+            if s_col.button("Sell", key=f"sell_{i}"):
+                st.session_state["sell_idx"] = int(i)
 
         if "edit_idx" in st.session_state:
             idx = st.session_state.pop("edit_idx")
             asset = st.session_state["portfolio"][idx]
             with st.form("edit_asset"):
                 e_cols = st.columns(4)
-                sym_e = e_cols[0].text_input("Symbol", asset["symbol"])
+                sym_e = e_cols[0].selectbox("Symbol", COMMON_TICKERS, index=COMMON_TICKERS.index(asset["symbol"]) if asset["symbol"] in COMMON_TICKERS else 0)
                 date_e = e_cols[1].date_input("Buy Date", asset["date"])
                 shares_e = e_cols[2].number_input("Shares", value=asset["shares"], min_value=0.0, step=0.01)
                 usd_e = e_cols[3].checkbox("Track in USD", value=asset["currency"] == "USD")
@@ -322,6 +305,35 @@ try:
                             }
                             st.experimental_rerun()
 
+        if "sell_idx" in st.session_state:
+            idx = st.session_state.pop("sell_idx")
+            asset = st.session_state["portfolio"][idx]
+            with st.form("sell_asset"):
+                s_cols = st.columns(3)
+                sell_date = s_cols[0].date_input("Sell Date", today)
+                sell_price = s_cols[1].number_input("Sell Price", min_value=0.0, step=0.01)
+                confirm = s_cols[2].form_submit_button("Confirm Sale")
+
+                if confirm:
+                    proceeds = sell_price * asset["shares"]
+                    profit = proceeds - asset["invested"]
+                    if "sales" not in st.session_state:
+                        st.session_state["sales"] = []
+                    st.session_state["sales"].append(
+                        {
+                            "symbol": asset["symbol"],
+                            "buy_date": asset["date"],
+                            "sell_date": sell_date,
+                            "shares": asset["shares"],
+                            "currency": asset["currency"],
+                            "invested": asset["invested"],
+                            "proceeds": proceeds,
+                            "profit": profit,
+                        }
+                    )
+                    st.session_state["portfolio"].pop(idx)
+                    st.experimental_rerun()
+
         try:
             price_series = []
             for asset in st.session_state["portfolio"]:
@@ -331,7 +343,7 @@ try:
                     end=today + dt.timedelta(days=1),
                     auto_adjust=True,
                 )["Close"]
-                if asset["currency"] == "USD":
+                if asset["currency"] == "USD" and asset["asset_currency"] != "USD":
                     fx_hist = yf.download(
                         f"{asset['asset_currency']}USD=X",
                         start=asset["date"],
@@ -357,6 +369,16 @@ try:
                 st.altair_chart(chart, use_container_width=True)
         except Exception:
             pass
+
+        if "sales" in st.session_state and st.session_state["sales"]:
+            sales_df = pd.DataFrame(st.session_state["sales"])
+            st.subheader("Realized Trades")
+            st.dataframe(
+                sales_df[["symbol", "buy_date", "sell_date", "shares", "currency", "proceeds", "profit"]],
+                use_container_width=True,
+            )
+            total_realized = sales_df["profit"].sum()
+            st.metric("Total Realized Profit", f"{total_realized:.2f}")
 
 except Exception as e:
     st.error(f"Error: {e}")
