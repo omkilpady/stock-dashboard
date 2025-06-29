@@ -5,6 +5,8 @@ import numpy as np
 import altair as alt
 import datetime as dt
 from typing import List, Dict
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
 
 from helpers import fx_to_usd, price_on_date, search_tickers
 st.set_page_config(page_title="Stock Beta & Vol Analyzer", layout="centered")
@@ -43,6 +45,12 @@ def fetch_px(tick, start, end):
     px = yf.download(tick, start=start, end=end, auto_adjust=True)["Close"]
     px.index = px.index.date
     return px
+
+@st.cache_data
+def fetch_px_multi(ticks: List[str], start, end):
+    data = yf.download(ticks, start=start, end=end)["Adj Close"]
+    data.index = data.index.date
+    return data
 
 try:
     px_stock = fetch_px(ticker, start, end)
@@ -186,6 +194,68 @@ try:
 """,
         unsafe_allow_html=True,
     )
+
+    # ── Multi-Stock Analysis ─────────────────────────────────────────────
+    st.subheader("📊 Multi-Stock Analysis")
+    tickers_ms = st.multiselect(
+        "Stocks / ETFs",
+        COMMON_TICKERS,
+        default=["AAPL", "MSFT", "NVDA", "GOOG"],
+        key="tickers_ms",
+    )
+    bench_ms = st.selectbox(
+        "Benchmark for multi-stock",
+        BENCHMARKS,
+        index=0,
+        key="bench_ms",
+    )
+
+    if tickers_ms:
+        all_ticks = tickers_ms + [bench_ms]
+        px_multi = fetch_px_multi(all_ticks, start, end)
+        rets_ms = px_multi.pct_change().dropna()
+        rets_ms.columns.name = "Ticker"
+
+        fig, ax = plt.subplots()
+        cax = ax.imshow(rets_ms.corr(), cmap="coolwarm", vmin=-1, vmax=1)
+        ax.set_xticks(np.arange(len(rets_ms.columns)))
+        ax.set_yticks(np.arange(len(rets_ms.columns)))
+        ax.set_xticklabels(rets_ms.columns)
+        ax.set_yticklabels(rets_ms.columns)
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
+        fig.colorbar(cax)
+        st.pyplot(fig)
+
+        betas = {}
+        r2s = {}
+        for t in tickers_ms:
+            y = rets_ms[t]
+            X = sm.add_constant(rets_ms[bench_ms])
+            model = sm.OLS(y, X).fit()
+            betas[t] = model.params[bench_ms]
+            r2s[t] = model.rsquared
+
+        beta_df = pd.DataFrame({"Beta": betas, "R²": r2s}).T.sort_index()
+        st.subheader("Market Sensitivity")
+        st.dataframe(beta_df.style.format({"Beta": "{:.2f}", "R²": "{:.2f}"}))
+
+        window = st.slider("Rolling window (days)", 20, 120, 60, key="roll_ms")
+        rolling_corr = (
+            rets_ms[tickers_ms].rolling(window).corr(rets_ms[bench_ms]).dropna()
+        )
+        st.subheader(f"Rolling {window}-day Correlation vs {bench_ms}")
+        for t in tickers_ms:
+            st.line_chart(rolling_corr.xs(t, level=1))
+
+        cum = (1 + rets_ms).cumprod() - 1
+        for t in tickers_ms:
+            y = cum[t].values
+            X = sm.add_constant(np.arange(len(y)))
+            slope, intercept = sm.OLS(y, X).fit().params
+            st.write(
+                f"**{t}** trend ≈ {slope*100:.2f}% / day  (intercept {intercept:.2f})"
+            )
+            st.line_chart(cum[[t]])
 
     # ── Portfolio Tracker ─────────────────────────────────────────────────
     st.subheader("📒 Portfolio Tracker")
