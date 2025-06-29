@@ -268,19 +268,38 @@ try:
         pf_df["Current Value"] = pf_df["shares"] * pf_df["Current"]
         pf_df["P/L"] = pf_df["Current Value"] - pf_df["invested"]
 
-        st.dataframe(
-            pf_df[["symbol", "date", "shares", "currency", "invested", "Current Value", "P/L"]],
-            use_container_width=True,
-        )
+        headers = [
+            "Symbol",
+            "Buy Date",
+            "Shares",
+            "Currency",
+            "Invested",
+            "Current Value",
+            "P/L",
+            "",
+            "",
+            "",
+        ]
+        hcols = st.columns(len(headers))
+        for col, label in zip(hcols, headers):
+            col.write(f"**{label}**")
 
-        for i in pf_df.index:
-            e_col, d_col, s_col = st.columns(3)
-            if e_col.button("Edit", key=f"edit_{i}"):
+        for i, row in pf_df.iterrows():
+            cols = st.columns(len(headers))
+            cols[0].write(row["symbol"])
+            cols[1].write(row["date"].strftime("%Y-%m-%d"))
+            cols[2].write(f"{row['shares']:.2f}")
+            cols[3].write(row["currency"])
+            cols[4].write(f"{row['invested']:.2f}")
+            cols[5].write(f"{row['Current Value']:.2f}")
+            cols[6].write(f"{row['P/L']:.2f}")
+
+            if cols[7].button("Edit", key=f"edit_{i}"):
                 st.session_state["edit_idx"] = int(i)
-            if d_col.button("Delete", key=f"del_{i}"):
+            if cols[8].button("Delete", key=f"del_{i}"):
                 st.session_state["portfolio"].pop(int(i))
                 st.experimental_rerun()
-            if s_col.button("Sell", key=f"sell_{i}"):
+            if cols[9].button("Sell", key=f"sell_{i}"):
                 st.session_state["sell_idx"] = int(i)
 
         if "edit_idx" in st.session_state:
@@ -365,14 +384,26 @@ try:
 
             if price_series:
                 portfolio_val = pd.concat(price_series, axis=1).fillna(method="ffill").sum(axis=1)
-                chart_df = portfolio_val.reset_index().rename(columns={0: "Value", "index": "Date"})
+                daily_ret = portfolio_val.pct_change().dropna()
+                cum_ret = (1 + daily_ret).cumprod() - 1
+
+                chart_type = st.radio(
+                    "Portfolio Chart",
+                    ["Cumulative Return", "Daily Return"],
+                    horizontal=True,
+                    key="pf_chart",
+                )
+                series = cum_ret if chart_type == "Cumulative Return" else daily_ret
+                title = "Cumulative Return" if chart_type == "Cumulative Return" else "Daily Return"
+
+                chart_df = series.reset_index().rename(columns={0: "Return", "index": "Date"})
                 chart = (
                     alt.Chart(chart_df)
                     .mark_line()
                     .encode(
                         x="Date:T",
-                        y=alt.Y("Value:Q", title="Portfolio Value"),
-                        tooltip=["Date:T", alt.Tooltip("Value:Q", format=".2f")],
+                        y=alt.Y("Return:Q", title=title),
+                        tooltip=["Date:T", alt.Tooltip("Return:Q", format=".2%")],
                     )
                     .interactive()
                 )
