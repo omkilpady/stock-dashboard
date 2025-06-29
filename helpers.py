@@ -25,7 +25,10 @@ def price_on_date(symbol: str, date: dt.date) -> float:
             auto_adjust=True,
         )["Close"]
         if not data.empty:
-            return data.iloc[0]
+            value = data.iloc[0]
+            if hasattr(value, "item"):
+                value = value.item()
+            return float(value)
     except Exception:
         pass
     return float("nan")
