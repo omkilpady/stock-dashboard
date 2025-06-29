@@ -6,7 +6,7 @@ import altair as alt
 import datetime as dt
 from typing import List, Dict
 
-from helpers import fx_to_usd, price_on_date
+from helpers import fx_to_usd, price_on_date, search_tickers
 st.set_page_config(page_title="Stock Beta & Vol Analyzer", layout="centered")
 
 # ── Title ──────────────────────────────────────────────────────────────────
@@ -19,8 +19,16 @@ st.markdown(
 c1, c2 = st.columns(2)
 COMMON_TICKERS = ["AAPL", "MSFT", "GOOG", "AMZN", "META", "NVDA", "TSLA"]
 BENCHMARKS = ["^GSPC", "SPY", "QQQ", "DIA", "^IXIC"]
+
+def symbol_input(label: str, key: str, default: str = "") -> str:
+    query = st.text_input(label, value=default, key=f"{key}_query")
+    suggestions = search_tickers(query) if query else COMMON_TICKERS
+    if suggestions:
+        return st.selectbox("Matches", suggestions, key=f"{key}_select")
+    return query
+
 with c1:
-    ticker = st.selectbox("Stock Ticker", COMMON_TICKERS, index=0)
+    ticker = symbol_input("Stock Ticker", "ticker", "AAPL")
 with c2:
     benchmark = st.selectbox("Benchmark", BENCHMARKS, index=0)
 
@@ -199,7 +207,8 @@ try:
 
     with st.form("add_asset"):
         a_cols = st.columns(4)
-        sym = a_cols[0].selectbox("Symbol", COMMON_TICKERS, index=0)
+        with a_cols[0]:
+            sym = symbol_input("Symbol", "add")
         date_bought = a_cols[1].date_input("Buy Date", today)
         shares = a_cols[2].number_input("Shares", min_value=0.0, step=0.01)
         track_usd = a_cols[3].checkbox("Track in USD", value=True)
@@ -279,7 +288,8 @@ try:
             asset = st.session_state["portfolio"][idx]
             with st.form("edit_asset"):
                 e_cols = st.columns(4)
-                sym_e = e_cols[0].selectbox("Symbol", COMMON_TICKERS, index=COMMON_TICKERS.index(asset["symbol"]) if asset["symbol"] in COMMON_TICKERS else 0)
+                with e_cols[0]:
+                    sym_e = symbol_input("Symbol", "edit", asset["symbol"]) 
                 date_e = e_cols[1].date_input("Buy Date", asset["date"])
                 shares_e = e_cols[2].number_input("Shares", value=asset["shares"], min_value=0.0, step=0.01)
                 usd_e = e_cols[3].checkbox("Track in USD", value=asset["currency"] == "USD")

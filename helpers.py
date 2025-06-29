@@ -1,6 +1,8 @@
 import datetime as dt
 
 import yfinance as yf
+import requests
+from typing import List
 
 
 def fx_to_usd(value: float, currency: str) -> float:
@@ -32,3 +34,20 @@ def price_on_date(symbol: str, date: dt.date) -> float:
     except Exception:
         pass
     return float("nan")
+
+
+def search_tickers(query: str) -> List[str]:
+    """Return a list of matching ticker symbols from Yahoo Finance."""
+    if not query:
+        return []
+    url = (
+        "https://query2.finance.yahoo.com/v1/finance/search"
+        f"?q={query}&quotes_count=10&news_count=0"
+    )
+    try:
+        resp = requests.get(url, timeout=3)
+        resp.raise_for_status()
+        data = resp.json().get("quotes", [])
+        return [item["symbol"] for item in data if "symbol" in item]
+    except Exception:
+        return []
