@@ -367,6 +367,8 @@ try:
                     .interactive()
                 )
                 st.altair_chart(chart, use_container_width=True)
+        except Exception:
+            pass
 
         if "sales" in st.session_state and st.session_state["sales"]:
             sales_df = pd.DataFrame(st.session_state["sales"])
@@ -377,8 +379,6 @@ try:
             )
             total_realized = sales_df["profit"].sum()
             st.metric("Total Realized Profit", f"{total_realized:.2f}")
-        except Exception:
-            pass
 
 except Exception as e:
     st.error(f"Error: {e}")
