@@ -48,7 +48,8 @@ def fetch_px(tick, start, end):
 
 @st.cache_data
 def fetch_px_multi(ticks: List[str], start, end):
-    data = yf.download(ticks, start=start, end=end)["Adj Close"]
+    """Download adjusted close prices for several tickers."""
+    data = yf.download(ticks, start=start, end=end, auto_adjust=True)["Close"]
     data.index = data.index.date
     return data
 

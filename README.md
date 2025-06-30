@@ -1,4 +1,3 @@
-# stock-dashboard
 # Stock Dashboard
 
 This Streamlit app analyzes a stock's beta and volatility versus a benchmark. It also contains a **Portfolio Tracker** for monitoring an entire portfolio.
@@ -17,4 +16,15 @@ pip install -r requirements.txt
 
 ## Multi-Stock Analysis
 
-Select multiple tickers and a benchmark in the sidebar to compare their daily returns. The dashboard displays a correlation heatmap, betas and R² values, rolling correlations, and simple trend regressions so you can explore how groups of assets move together.
+Select multiple tickers and a benchmark in the sidebar to compare their daily returns. The dashboard displays:
+
+- A correlation heatmap to visualize co-movement
+- A table of beta and R² values versus the chosen benchmark
+- Rolling correlation charts to spot regime changes
+- Simple trend regressions for momentum insight
+
+Launch the app with:
+
+```bash
+streamlit run app.py
+```
