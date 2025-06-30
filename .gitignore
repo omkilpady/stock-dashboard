@@ -1,0 +1,10 @@
+# bytecode
+__pycache__/
+*.py[cod]
+
+# virtual environments
+venv/
+.env/
+
+# test/output artifacts
+.pytest_cache/
