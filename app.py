@@ -48,9 +48,10 @@ def fetch_px(tick, start, end):
 
 @st.cache_data
 def fetch_px_multi(ticks: List[str], start, end):
-    data = yf.download(ticks, start=start, end=end)["Adj Close"]
-    data.index = data.index.date
-    return data
+    data = yf.download(ticks, start=start, end=end, auto_adjust=True)
+    close = data["Close"] if isinstance(data, pd.DataFrame) else data
+    close.index = close.index.date
+    return close
 
 try:
     px_stock = fetch_px(ticker, start, end)
