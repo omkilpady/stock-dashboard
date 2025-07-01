@@ -6,7 +6,7 @@ import altair as alt
 import datetime as dt
 from typing import List, Dict
 import matplotlib.pyplot as plt
-import statsmodels.api as sm
+from scipy.stats import linregress
 
 from helpers import fx_to_usd, price_on_date, search_tickers
 st.set_page_config(page_title="Stock Beta & Vol Analyzer", layout="centered")
@@ -48,9 +48,10 @@ def fetch_px(tick, start, end):
 
 @st.cache_data
 def fetch_px_multi(ticks: List[str], start, end):
-    data = yf.download(ticks, start=start, end=end)["Adj Close"]
-    data.index = data.index.date
-    return data
+    data = yf.download(ticks, start=start, end=end, auto_adjust=True)
+    close = data["Close"] if isinstance(data, pd.DataFrame) else data
+    close.index = close.index.date
+    return close
 
 try:
     px_stock = fetch_px(ticker, start, end)
@@ -230,10 +231,10 @@ try:
         r2s = {}
         for t in tickers_ms:
             y = rets_ms[t]
-            X = sm.add_constant(rets_ms[bench_ms])
-            model = sm.OLS(y, X).fit()
-            betas[t] = model.params[bench_ms]
-            r2s[t] = model.rsquared
+            x = rets_ms[bench_ms]
+            res = linregress(x, y)
+            betas[t] = res.slope
+            r2s[t] = res.rvalue ** 2
 
         beta_df = pd.DataFrame({"Beta": betas, "R²": r2s}).T.sort_index()
         st.subheader("Market Sensitivity")
@@ -244,14 +245,22 @@ try:
             rets_ms[tickers_ms].rolling(window).corr(rets_ms[bench_ms]).dropna()
         )
         st.subheader(f"Rolling {window}-day Correlation vs {bench_ms}")
-        for t in tickers_ms:
-            st.line_chart(rolling_corr.xs(t, level=1))
+
+        if isinstance(rolling_corr, pd.Series) or not isinstance(
+            rolling_corr.index, pd.MultiIndex
+        ):
+            # Handles single ticker case or DataFrame without MultiIndex
+            st.line_chart(rolling_corr)
+        else:
+            for t in tickers_ms:
+                st.line_chart(rolling_corr.xs(t, level=1))
 
         cum = (1 + rets_ms).cumprod() - 1
         for t in tickers_ms:
             y = cum[t].values
-            X = sm.add_constant(np.arange(len(y)))
-            slope, intercept = sm.OLS(y, X).fit().params
+            x = np.arange(len(y))
+            res = linregress(x, y)
+            slope, intercept = res.slope, res.intercept
             st.write(
                 f"**{t}** trend ≈ {slope*100:.2f}% / day  (intercept {intercept:.2f})"
             )
