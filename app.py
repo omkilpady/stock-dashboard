@@ -6,7 +6,7 @@ import altair as alt
 import datetime as dt
 from typing import List, Dict
 import matplotlib.pyplot as plt
-import statsmodels.api as sm
+from scipy.stats import linregress
 
 from helpers import fx_to_usd, price_on_date, search_tickers
 st.set_page_config(page_title="Stock Beta & Vol Analyzer", layout="centered")
@@ -230,10 +230,10 @@ try:
         r2s = {}
         for t in tickers_ms:
             y = rets_ms[t]
-            X = sm.add_constant(rets_ms[bench_ms])
-            model = sm.OLS(y, X).fit()
-            betas[t] = model.params[bench_ms]
-            r2s[t] = model.rsquared
+            x = rets_ms[bench_ms]
+            res = linregress(x, y)
+            betas[t] = res.slope
+            r2s[t] = res.rvalue ** 2
 
         beta_df = pd.DataFrame({"Beta": betas, "R²": r2s}).T.sort_index()
         st.subheader("Market Sensitivity")
@@ -250,8 +250,9 @@ try:
         cum = (1 + rets_ms).cumprod() - 1
         for t in tickers_ms:
             y = cum[t].values
-            X = sm.add_constant(np.arange(len(y)))
-            slope, intercept = sm.OLS(y, X).fit().params
+            x = np.arange(len(y))
+            res = linregress(x, y)
+            slope, intercept = res.slope, res.intercept
             st.write(
                 f"**{t}** trend ≈ {slope*100:.2f}% / day  (intercept {intercept:.2f})"
             )
