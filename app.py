@@ -245,8 +245,13 @@ try:
             rets_ms[tickers_ms].rolling(window).corr(rets_ms[bench_ms]).dropna()
         )
         st.subheader(f"Rolling {window}-day Correlation vs {bench_ms}")
-        for t in tickers_ms:
-            st.line_chart(rolling_corr.xs(t, level=1))
+
+        if isinstance(rolling_corr, pd.Series):
+            # Only one ticker selected; xs would fail
+            st.line_chart(rolling_corr)
+        else:
+            for t in tickers_ms:
+                st.line_chart(rolling_corr.xs(t, level=1))
 
         cum = (1 + rets_ms).cumprod() - 1
         for t in tickers_ms:
