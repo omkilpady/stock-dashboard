@@ -246,12 +246,14 @@ try:
         )
         st.subheader(f"Rolling {window}-day Correlation vs {bench_ms}")
 
-        if isinstance(rolling_corr.index, pd.MultiIndex):
+        if isinstance(rolling_corr, pd.Series) or not isinstance(
+            rolling_corr.index, pd.MultiIndex
+        ):
+            # Handles single ticker case or DataFrame without MultiIndex
+            st.line_chart(rolling_corr)
+        else:
             for t in tickers_ms:
                 st.line_chart(rolling_corr.xs(t, level=1))
-        else:
-            # Handles single ticker case where index is not MultiIndex
-            st.line_chart(rolling_corr)
 
         cum = (1 + rets_ms).cumprod() - 1
         for t in tickers_ms:
