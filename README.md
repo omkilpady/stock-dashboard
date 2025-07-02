@@ -8,3 +8,5 @@ The tracker verifies each ticker and automatically fetches the price on the purc
 ## Multi-Stock Analysis
 
 Select multiple tickers and a benchmark in the sidebar to compare their daily returns. The dashboard displays a correlation heatmap, betas and R² values, rolling correlations, and simple trend regressions so you can explore how groups of assets move together.
+
+The app uses SciPy's `linregress` for regression calculations, removing the need for Statsmodels.
