@@ -248,12 +248,13 @@ try:
 
         if isinstance(rolling_corr, pd.Series):
             st.line_chart(rolling_corr)
-        elif isinstance(rolling_corr.index, pd.MultiIndex):
-            for t in tickers_ms:
-                st.line_chart(rolling_corr.xs(t, level=1))
         else:
-            for t in tickers_ms:
-                st.line_chart(rolling_corr[t])
+            if isinstance(rolling_corr.index, pd.MultiIndex):
+                for t in tickers_ms:
+                    st.line_chart(rolling_corr.xs(t, level=1))
+            else:
+                for t in tickers_ms:
+                    st.line_chart(rolling_corr[t])
 
         cum = (1 + rets_ms).cumprod() - 1
         for t in tickers_ms:
