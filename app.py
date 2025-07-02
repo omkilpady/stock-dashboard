@@ -247,14 +247,16 @@ try:
         st.subheader(f"Rolling {window}-day Correlation vs {bench_ms}")
 
         if isinstance(rolling_corr, pd.Series):
+            # Only one ticker selected; Series indexed by date
             st.line_chart(rolling_corr)
+        elif isinstance(rolling_corr.index, pd.MultiIndex):
+            # MultiIndex: first level is date, second level is ticker
+            for t in tickers_ms:
+                st.line_chart(rolling_corr.xs(t, level=1))
         else:
-            if isinstance(rolling_corr.index, pd.MultiIndex):
-                for t in tickers_ms:
-                    st.line_chart(rolling_corr.xs(t, level=1))
-            else:
-                for t in tickers_ms:
-                    st.line_chart(rolling_corr[t])
+            # DataFrame with date index and tickers as columns
+            for t in tickers_ms:
+                st.line_chart(rolling_corr[t])
 
         cum = (1 + rets_ms).cumprod() - 1
         for t in tickers_ms:
