@@ -6,6 +6,7 @@ import altair as alt
 import datetime as dt
 from typing import List, Dict
 import matplotlib.pyplot as plt
+# SciPy replacement for Statsmodels regressions
 from scipy.stats import linregress
 
 from helpers import fx_to_usd, price_on_date, search_tickers
