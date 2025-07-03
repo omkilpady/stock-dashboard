@@ -38,6 +38,32 @@ def symbol_input(
         return st.selectbox("Matches", sugg_list, key=f"{key}_select")
     return query
 
+
+def symbols_input(
+    label: str,
+    key: str,
+    default: List[str] | None = None,
+    suggestions: List[str] | None = None,
+) -> List[str]:
+    """Allow adding multiple ticker symbols with suggestions."""
+    if key not in st.session_state:
+        st.session_state[key] = list(default) if default else []
+
+    cols = st.columns([3, 1])
+    with cols[0]:
+        new_sym = symbol_input(label, f"{key}_new", suggestions=suggestions)
+    with cols[1]:
+        if st.button("Add", key=f"{key}_add") and new_sym:
+            sym = new_sym.upper()
+            if sym not in st.session_state[key]:
+                st.session_state[key].append(sym)
+
+    current = st.multiselect(
+        "Selected", st.session_state[key], default=st.session_state[key], key=f"{key}_sel"
+    )
+    st.session_state[key] = current
+    return current
+
 with c1:
     ticker = symbol_input("Stock Ticker", "ticker", "AAPL")
 with c2:
@@ -212,11 +238,11 @@ try:
 
     # ── Multi-Stock Analysis ─────────────────────────────────────────────
     st.subheader("📊 Multi-Stock Analysis")
-    tickers_ms = st.multiselect(
+    tickers_ms = symbols_input(
         "Stocks / ETFs",
-        COMMON_TICKERS,
+        "tickers_ms",
         default=["AAPL", "MSFT", "NVDA", "GOOG"],
-        key="tickers_ms",
+        suggestions=COMMON_TICKERS,
     )
     bench_ms = symbol_input(
         "Benchmark for multi-stock",
