@@ -22,17 +22,31 @@ c1, c2 = st.columns(2)
 COMMON_TICKERS = ["AAPL", "MSFT", "GOOG", "AMZN", "META", "NVDA", "TSLA"]
 BENCHMARKS = ["^GSPC", "SPY", "QQQ", "DIA", "^IXIC"]
 
-def symbol_input(label: str, key: str, default: str = "") -> str:
+def symbol_input(
+    label: str,
+    key: str,
+    default: str = "",
+    suggestions: List[str] | None = None,
+) -> str:
+    """Text input with dropdown suggestions for ticker symbols."""
+    if suggestions is None:
+        suggestions = COMMON_TICKERS
+
     query = st.text_input(label, value=default, key=f"{key}_query")
-    suggestions = search_tickers(query) if query else COMMON_TICKERS
-    if suggestions:
-        return st.selectbox("Matches", suggestions, key=f"{key}_select")
+    sugg_list = search_tickers(query) if query else suggestions
+    if sugg_list:
+        return st.selectbox("Matches", sugg_list, key=f"{key}_select")
     return query
 
 with c1:
     ticker = symbol_input("Stock Ticker", "ticker", "AAPL")
 with c2:
-    benchmark = st.selectbox("Benchmark", BENCHMARKS, index=0)
+    benchmark = symbol_input(
+        "Benchmark",
+        "benchmark",
+        BENCHMARKS[0] if BENCHMARKS else "",
+        suggestions=BENCHMARKS,
+    )
 
 today = dt.date.today()
 default_end = today - dt.timedelta(days=1)
@@ -204,11 +218,11 @@ try:
         default=["AAPL", "MSFT", "NVDA", "GOOG"],
         key="tickers_ms",
     )
-    bench_ms = st.selectbox(
+    bench_ms = symbol_input(
         "Benchmark for multi-stock",
-        BENCHMARKS,
-        index=0,
-        key="bench_ms",
+        "bench_ms",
+        BENCHMARKS[0] if BENCHMARKS else "",
+        suggestions=BENCHMARKS,
     )
 
     if tickers_ms:
