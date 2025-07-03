@@ -4,6 +4,5 @@ numpy
 pandas
 requests
 scipy
-statsmodels
 streamlit
 yfinance
