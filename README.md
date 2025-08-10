@@ -1,25 +1,20 @@
-# Stock Dashboard
+# Stock Report Generator — Alpha Vantage Edition
 
-This Streamlit app analyzes a stock's beta and volatility versus a benchmark. It also contains a **Portfolio Tracker** for monitoring an entire portfolio.
+Uses the free Alpha Vantage API so it deploys cleanly on Streamlit Cloud.
 
-The tracker verifies each ticker and automatically fetches the price on the purchase date. Enter the number of shares and choose whether to track the holding in its native currency or convert values to USD. Holdings can be edited or removed and a chart displays the portfolio’s value over time.
+What it does
+- Natural language screen for US Healthcare or US Tech, ranked by outperformance vs SPY.
+- 2 page PDF per ticker with period return, outperformance vs SPY, and volatility proxy.
+- Single-ticker PDF.
+- Transcript paste -> simple summary.
 
-## Multi-Stock Analysis
+Setup on Streamlit Cloud
+1) Upload these files to a GitHub repo.
+2) In Streamlit, set app file to app.py.
+3) Add your Alpha Vantage key in Secrets as:
+ALPHA_VANTAGE_API_KEY = "sk_from_alpha_vantage"
+4) Deploy.
 
-Select multiple tickers and a benchmark in the sidebar to compare their daily returns. The dashboard displays a correlation heatmap, betas and R² values, rolling correlations, and simple trend regressions so you can explore how groups of assets move together.
-
-The app uses SciPy's `linregress` for regression calculations, so the Statsmodels dependency is no longer required.
-h7szye-codex/fix-importerror-with-statsmodels-and-scipy
-
-Multi-stock price data is fetched with `auto_adjust=True` and uses the "Close" column, so missing "Adj Close" values won't trigger errors.
-
-## Usage
-
-Install the required packages and start the Streamlit app:
-
-```bash
-pip install -r requirements.txt
-streamlit run app.py
-```
-
-main
+Notes
+- Free tier is ~5 calls/min. Keep sector lists small.
+- Benchmarks use SPY.
